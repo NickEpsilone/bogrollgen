@@ -46,15 +46,15 @@
             }
         }
 
-        /* Скрываем интерфейс при печати и удаляем колонтитулы браузера */
+        /* ИСПРАВЛЕННЫЕ СТИЛИ ПЕЧАТИ */
         @media print {
             
-            /* Сброс колонтитулов в браузере (насколько это возможно) */
+            /* Сброс колонтитулов в браузере */
             @page {
                 margin: 20mm;
             }
             
-            /* АГРЕССИВНОЕ УДАЛЕНИЕ КОЛОНТИТУЛОВ И БРАУЗЕРНОЙ ИНФОРМАЦИИ (ОПТИМИЗИРОВАНО) */
+            /* Удаление технических колонтитулов браузера */
             @page :first, @page :left, @page :right {
                 @top-left { content: none !important; }
                 @top-right { content: none !important; }
@@ -63,41 +63,39 @@
             }
 
             body {
-                /* Сбрасываем фон, чтобы избежать лишних теней */
                 background-color: white !important; 
                 margin: 0;
+                overflow: visible !important;
             }
 
-            /* Скрываем все элементы, не относящиеся к документу */
-            body * {
-                visibility: hidden;
-            }
+            /* Полностью удаляем элементы интерфейса из потока */
             .no-print {
                 display: none !important;
             }
-            #preview-container, #preview-container * {
-                visibility: visible;
-            }
-            /* Контейнер превью должен занимать весь экран печати */
+
+            /* Контейнер превью становится обычным блоком */
             #preview-container {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                margin: 0;
-                padding: 0;
-                box-shadow: none;
+                position: static !important; /* Убираем absolute, возвращаем в поток */
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                display: block !important;
             }
-            /* Сам документ A4 должен быть чистым и занимать место с учетом полей @page */
+
+            /* Документ занимает всю ширину области печати */
             .a4-paper {
-                width: 100%;
-                min-height: auto;
-                margin: 0;
-                padding: 0; /* Все отступы теперь контролируются через @page margin */
-                box-shadow: none;
-                /* Сбрасываем цвета, чтобы быть уверенными, что печатается черным по белому */
-                background-color: white; 
-                color: black;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important; /* Отступы регулируются через @page */
+                box-shadow: none !important;
+                border: none !important;
+                min-height: auto !important;
+            }
+            
+            /* Скрываем скроллбары если они вдруг вылезут */
+            ::-webkit-scrollbar {
+                display: none;
             }
         }
         
@@ -167,6 +165,23 @@
                 </div>
             </div>
 
+            <!-- НОВЫЙ БЛОК: Выбор пола -->
+            <div class="input-group">
+                <label class="input-label">Пол сотрудника (для корректных окончаний)</label>
+                <div class="flex space-x-4">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="gender" value="male" id="genderMale" checked class="form-radio text-blue-600">
+                        <span class="ml-2 text-white">Мужчина</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="gender" value="female" id="genderFemale" class="form-radio text-pink-600">
+                        <span class="ml-2 text-white">Женщина</span>
+                    </label>
+                </div>
+            </div>
+            <!-- КОНЕЦ НОВОГО БЛОКА -->
+
+
             <h3 class="text-sm font-semibold text-neutral-400 mb-2 border-b border-neutral-700 pb-2 pt-4">Инцидент и причина</h3>
 
             <!-- Дата -->
@@ -179,11 +194,11 @@
             <div class="grid grid-cols-2 gap-4">
                 <div class="input-group">
                     <label class="input-label">Начало (план)</label>
-                    <input type="time" id="startTimeInput" value="09:00" class="input-field">
+                    <input type="time" id="startTimeInput" class="input-field">
                 </div>
                 <div class="input-group">
                     <label class="input-label">Прибыл в (факт)</label>
-                    <input type="time" id="endTimeInput" value="09:20" class="input-field">
+                    <input type="time" id="endTimeInput" class="input-field">
                 </div>
             </div>
 
@@ -275,6 +290,7 @@
                 </div>
 
                 <!-- Абзац про компенсацию -->
+                <!-- ВНИМАНИЕ: Содержимое этого блока будет устанавливаться динамически в JS, меняя "Готов/Готова" -->
                 <div id="compensateText" style="text-align: justify; text-indent: 1.25cm; margin-top: 0.5cm;">
                     Готов компенсировать пропущенное время путем переработки в конце рабочего дня для сохранения общего баланса рабочего времени согласно трудовому договору.
                 </div>
@@ -303,13 +319,29 @@
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         dateInput.value = `${year}-${month}-${day}`;
+        
+        // --- ИНИЦИАЛИЗАЦИЯ ВРЕМЕНИ ---
+        const startTimeInput = document.getElementById('startTimeInput');
+        const endTimeInput = document.getElementById('endTimeInput');
+
+        // 1. Устанавливаем "Начало (план)" на фиксированное значение 09:00 (по требованию)
+        startTimeInput.value = '09:00'; 
+        
+        // 2. Устанавливаем "Прибыл в (факт)" на ТОЧНОЕ текущее время (timezone-safe)
+        const now = new Date();
+        const currentHours = String(now.getHours()).padStart(2, '0');
+        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+        
+        endTimeInput.value = `${currentHours}:${currentMinutes}`;
+        // --- КОНЕЦ ИНИЦИАЛИЗАЦИИ ВРЕМЕНИ ---
 
 
-        // Элементы
+        // Элементы, за которыми следим
         const inputs = [
             'dateInput', 'startTimeInput', 'endTimeInput', 
             'directorName', 'employeeNameHeader', 'employeeNameSignature', 'reasonType', 
-            'companyName', 'employeeTitle', 'compensateCheckbox', 'customTextInput'
+            'companyName', 'employeeTitle', 'compensateCheckbox', 'customTextInput', 
+            'genderMale', 'genderFemale' // Добавляем переключатели пола
         ];
 
         // Тексты причин (11 вариантов + custom)
@@ -347,6 +379,10 @@
             const employeeTitle = document.getElementById('employeeTitle').value;
             const compensateChecked = document.getElementById('compensateCheckbox').checked;
             const customTextVal = document.getElementById('customTextInput').value;
+            
+            // НОВАЯ ПРОВЕРКА ПОЛА: Определяем правильное окончание
+            const isMale = document.getElementById('genderMale').checked;
+            const readyForm = isMale ? 'Готов' : 'Готова';
 
             // Обновляем DOM
             const formattedDate = formatDate(dateVal);
@@ -375,14 +411,23 @@
                 document.getElementById('reasonText').innerText = reasons[type];
             }
             
-            // Логика отображения компенсации
+            // Логика отображения компенсации (С МЕНОЙ ОКОНЧАНИЯ)
             const compensateBlock = document.getElementById('compensateText');
-            compensateBlock.style.display = compensateChecked ? 'block' : 'none';
+            if (compensateChecked) {
+                 compensateBlock.style.display = 'block';
+                 // Меняем "Готов/Готова"
+                 compensateBlock.innerText = `${readyForm} компенсировать пропущенное время путем переработки в конце рабочего дня для сохранения общего баланса рабочего времени согласно трудовому договору.`;
+            } else {
+                compensateBlock.style.display = 'none';
+            }
         }
 
         // Навешиваем слушатели событий
         inputs.forEach(id => {
-            document.getElementById(id).addEventListener('input', updateDocument);
+             const element = document.getElementById(id) || document.querySelector(`input[name="gender"]`);
+             if (element) {
+                element.addEventListener('input', updateDocument);
+             }
         });
 
         // Первый рендер
@@ -402,8 +447,11 @@
             const end = document.getElementById('displayEnd').innerText;
             const reason = document.getElementById('reasonText').innerText;
             const noDamage = document.getElementById('noDamageText').innerText;
-            const compensate = document.getElementById('compensateText').style.display === 'block' ? 
-                                document.getElementById('compensateText').innerText : '';
+            
+            // Получаем текст компенсации из DOM (уже с корректным окончанием)
+            const compensateElement = document.getElementById('compensateText');
+            const compensate = compensateElement.style.display === 'block' ? 
+                               compensateElement.innerText : '';
             const dateSign = document.getElementById('displayDateSign').innerText;
 
             // Формирование чистого текста
@@ -427,49 +475,59 @@ ${dateSign}`;
             // Убираем лишние пустые строки
             cleanText = cleanText.split('\n').filter(line => line.trim() !== '').join('\n');
             
-            navigator.clipboard.writeText(cleanText)
-                .then(() => {
-                    // БЕЗОПАСНОЕ СОЗДАНИЕ МОДАЛЬНОГО ОКНА (без innerHTML)
-                    const modal = document.createElement('div');
-                    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
+            // Использование document.execCommand('copy') для совместимости с iframe
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = cleanText;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            
+            let success = false;
+            try {
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error('Не удалось скопировать текст:', err);
+            }
+            
+            document.body.removeChild(tempTextArea);
 
-                    const content = document.createElement('div');
-                    content.className = 'bg-white p-6 rounded-lg shadow-xl text-black';
+            if (success) {
+                // БЕЗОПАСНОЕ СОЗДАНИЕ МОДАЛЬНОГО ОКНА
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
 
-                    const title = document.createElement('p');
-                    title.className = 'font-bold';
-                    title.textContent = 'Успешно скопировано';
+                const content = document.createElement('div');
+                content.className = 'bg-white p-6 rounded-lg shadow-xl text-black w-72';
 
-                    const desc = document.createElement('p');
-                    desc.textContent = 'Текст объяснительной скопирован в буфер обмена!';
+                const title = document.createElement('p');
+                title.className = 'font-bold text-lg mb-2';
+                title.textContent = 'Успешно скопировано';
 
-                    const btn = document.createElement('button');
-                    btn.className = 'mt-4 bg-blue-600 text-white py-1 px-3 rounded';
-                    btn.textContent = 'ОК';
-                    btn.onclick = () => {
-                         modal.remove();
-                         // Удаляем слушатель после закрытия через кнопку, если он еще не сработал
-                         window.removeEventListener('keydown', handleEscape);
-                    };
+                const desc = document.createElement('p');
+                desc.className = 'text-sm text-gray-700 mb-4';
+                desc.textContent = 'Текст объяснительной скопирован в буфер обмена!';
 
-                    content.append(title, desc, btn);
-                    modal.appendChild(content);
-                    document.body.appendChild(modal);
-                    
-                    // Закрытие по Escape
-                    const handleEscape = function(e) {
-                        if (e.key === 'Escape') {
-                            modal.remove();
-                            window.removeEventListener('keydown', handleEscape); // Удаляем себя после срабатывания
-                        }
-                    };
-                    window.addEventListener('keydown', handleEscape);
+                const btn = document.createElement('button');
+                btn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded transition';
+                btn.textContent = 'ОК';
+                btn.onclick = () => {
+                      modal.remove();
+                      // Удаляем слушатель после закрытия через кнопку, если он еще не сработал
+                      window.removeEventListener('keydown', handleEscape);
+                };
 
-
-                })
-                .catch(err => {
-                     console.error('Не удалось скопировать текст:', err);
-                });
+                content.append(title, desc, btn);
+                modal.appendChild(content);
+                document.body.appendChild(modal);
+                
+                // Закрытие по Escape
+                const handleEscape = function(e) {
+                    if (e.key === 'Escape') {
+                        modal.remove();
+                        window.removeEventListener('keydown', handleEscape); // Удаляем себя после срабатывания
+                    }
+                };
+                window.addEventListener('keydown', handleEscape);
+            }
         }
     </script>
 </body>
