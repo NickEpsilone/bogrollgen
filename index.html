@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор Объяснительных</title>
+    <!-- Добавляем SVG-фавиконку для чистого отображения (щит) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Times+New_Roman&display=swap');
+        
+        body {
+            background-color: #1a1a1a;
+            color: #e5e5e5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Стиль для бумажного листа */
+        .a4-paper {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 0 auto;
+            color: black;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 14pt;
+            line-height: 1.5;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        /* Адаптация для мобильных устройств (менее 768px - md breakpoint) */
+        @media (max-width: 767px) {
+            .a4-paper {
+                width: 95%; /* Занимает почти всю ширину экрана */
+                max-width: none;
+                min-height: auto;
+                padding: 15mm; /* Уменьшаем отступы */
+                font-size: 12pt; /* Немного уменьшаем шрифт для лучшей читаемости */
+                box-shadow: none; /* Убираем тень, чтобы не мешала на маленьких экранах */
+            }
+            #preview-container {
+                 padding: 1rem 0; /* Добавляем вертикальные отступы к контейнеру превью */
+            }
+        }
+
+        /* Скрываем интерфейс при печати и удаляем колонтитулы браузера */
+        @media print {
+            
+            /* Сброс колонтитулов в браузере (насколько это возможно) */
+            @page {
+                margin: 20mm;
+            }
+            
+            /* АГРЕССИВНОЕ УДАЛЕНИЕ КОЛОНТИТУЛОВ И БРАУЗЕРНОЙ ИНФОРМАЦИИ (ОПТИМИЗИРОВАНО) */
+            @page :first, @page :left, @page :right {
+                @top-left { content: none !important; }
+                @top-right { content: none !important; }
+                @bottom-left { content: none !important; }
+                @bottom-right { content: none !important; }
+            }
+
+            body {
+                /* Сбрасываем фон, чтобы избежать лишних теней */
+                background-color: white !important; 
+                margin: 0;
+            }
+
+            /* Скрываем все элементы, не относящиеся к документу */
+            body * {
+                visibility: hidden;
+            }
+            .no-print {
+                display: none !important;
+            }
+            #preview-container, #preview-container * {
+                visibility: visible;
+            }
+            /* Контейнер превью должен занимать весь экран печати */
+            #preview-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+            }
+            /* Сам документ A4 должен быть чистым и занимать место с учетом полей @page */
+            .a4-paper {
+                width: 100%;
+                min-height: auto;
+                margin: 0;
+                padding: 0; /* Все отступы теперь контролируются через @page margin */
+                box-shadow: none;
+                /* Сбрасываем цвета, чтобы быть уверенными, что печатается черным по белому */
+                background-color: white; 
+                color: black;
+            }
+        }
+        
+        .input-group {
+            margin-bottom: 1rem;
+        }
+        .input-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #a3a3a3;
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.5rem;
+            background-color: #262626;
+            border: 1px solid #404040;
+            border-radius: 0.25rem;
+            color: white;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row">
+
+    <!-- Панель управления (Слева) -->
+    <div class="w-full md:w-1/3 p-6 bg-neutral-900 border-r border-neutral-800 no-print overflow-y-auto">
+        <h1 class="text-2xl font-bold mb-6 text-white flex items-center gap-2">
+            <span>🛡️</span> Универсальный Генератор Объяснительных
+        </h1>
+        
+        <div class="space-y-4">
+            <h3 class="text-sm font-semibold text-neutral-400 mb-2 border-b border-neutral-700 pb-2">Данные организации</h3>
+            
+            <!-- Компания -->
+            <div class="input-group">
+                <label class="input-label">Название компании (ТОО "Рога и копыта")</label>
+                <input type="text" id="companyName" value="ТОО Рога и копыта" class="input-field">
+            </div>
+
+            <!-- Должность -->
+            <div class="input-group">
+                <label class="input-label">Должность сотрудника (DevOps инженера)</label>
+                <input type="text" id="employeeTitle" value="DevOps инженера" class="input-field">
+            </div>
+
+            <h3 class="text-sm font-semibold text-neutral-400 mb-2 border-b border-neutral-700 pb-2 pt-4">Данные и падежи</h3>
+            
+            <!-- ФИО Директора -->
+            <div class="input-group">
+                <label class="input-label">ФИО Директора (в Дательном падеже)</label>
+                <input type="text" id="directorName" value="Кабан Кабанычу" class="input-field">
+            </div>
+            
+            <!-- ФИО Сотрудника (Где падежи разные) -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="input-group">
+                    <label class="input-label">ФИО для шапки (Р.п. - От кого?)</label>
+                    <input type="text" id="employeeNameHeader" value="Пупкина В." class="input-field">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">ФИО для подписи (И.п. - Кто?)</label>
+                    <input type="text" id="employeeNameSignature" value="Вася Пупкин" class="input-field">
+                </div>
+            </div>
+
+            <h3 class="text-sm font-semibold text-neutral-400 mb-2 border-b border-neutral-700 pb-2 pt-4">Инцидент и причина</h3>
+
+            <!-- Дата -->
+            <div class="input-group">
+                <label class="input-label">Дата нарушения</label>
+                <input type="date" id="dateInput" class="input-field">
+            </div>
+
+            <!-- Время -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="input-group">
+                    <label class="input-label">Начало (план)</label>
+                    <input type="time" id="startTimeInput" value="09:00" class="input-field">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Прибыл в (факт)</label>
+                    <input type="time" id="endTimeInput" value="09:20" class="input-field">
+                </div>
+            </div>
+
+            <!-- Тип отмазки -->
+            <div class="input-group">
+                <label class="input-label">Стратегия защиты</label>
+                <select id="reasonType" class="input-field">
+                    <option value="personal">🔒 1. Личные причины (Классика)</option>
+                    <option value="remote">💻 2. Работал удаленно (DevOps Style)</option>
+                    <option value="logistics">🛑 3. Транспортный коллапс / Логистический инцидент</option>
+                    <option value="infrastructure">⚙️ 4. Технический инцидент на сторонней инфраструктуре</option>
+                    <option value="preventive">🩺 5. Проведение неотложных превентивных мероприятий</option>
+                    <option value="observation">👁️ 6. Внеплановое наблюдение за критическими системами</option>
+                    <option value="integrity">💾 7. Обеспечение целостности данных (удаленно)</option>
+                    <option value="optimization">🗺️ 8. Сложности маршрутной оптимизации</option>
+                    <option value="admin">📄 9. Выполнение срочного административного требования</option>
+                    <option value="planning">🧠 10. Корректировка оперативного планирования</option>
+                    <option value="custom">✍️ 11. Свой собственный текст</option>
+                </select>
+            </div>
+
+            <!-- Пользовательский текст -->
+            <div class="input-group" id="customTextInputContainer" style="display: none;">
+                <label class="input-label">Ваш текст объяснения (без шапки и подвала)</label>
+                <textarea id="customTextInput" rows="4" class="input-field" placeholder="Отсутствие было вызвано форс-мажорными обстоятельствами, не подлежащими разглашению..."></textarea>
+            </div>
+            
+            <!-- Отработка -->
+            <div class="input-group flex items-center pt-2">
+                <input type="checkbox" id="compensateCheckbox" checked class="h-4 w-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded">
+                <label for="compensateCheckbox" class="ml-2 text-sm text-white">Включить абзац про компенсацию времени (отработку)</label>
+            </div>
+
+
+            <!-- Кнопки -->
+            <div class="pt-6 space-y-3">
+                <button onclick="window.print()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Печать / Скачать PDF
+                </button>
+                <button onclick="copyText()" class="w-full bg-neutral-700 hover:bg-neutral-600 text-white font-bold py-2 px-4 rounded transition text-sm">
+                    Скопировать текст
+                </button>
+            </div>
+            
+            <div class="mt-8 text-xs text-neutral-500">
+                * При печати интерфейс скроется, останется только документ.
+                ** Для полного удаления колонтитулов браузера, в настройках печати (Chrome, Firefox) необходимо отключить опцию "Заголовки и колонтитулы" (Headers and footers).
+            </div>
+        </div>
+    </div>
+
+    <!-- Превью документа (Справа) -->
+    <div class="w-full md:w-2/3 bg-neutral-800 p-8 overflow-y-auto flex justify-center">
+        <div id="preview-container">
+            <div class="a4-paper">
+                <!-- Шапка -->
+                <div style="text-align: right; margin-bottom: 2cm;">
+                    <div>Генеральному директору</div>
+                    <div id="displayCompany">ТОО "Рога и копыта"</div>
+                    <div id="displayDirector" style="margin-bottom: 0.5cm;">Кабан Кабанычу</div>
+                    
+                    <!-- Должность в Родительном падеже -->
+                    <div>От <span id="displayEmployeeTitle">DevOps инженера</span></div>
+                    <!-- ФИО в Родительном падеже (на новой строке) -->
+                    <div><span id="displayEmployeeHeader">Пупкина В.</span></div>
+                </div>
+
+                <!-- Заголовок -->
+                <div style="text-align: center; font-weight: bold; margin-bottom: 1cm; text-transform: uppercase;">
+                    Объяснительная
+                </div>
+
+                <!-- Тело -->
+                <div style="text-align: justify; text-indent: 1.25cm;">
+                    По факту отсутствия на рабочем месте <span id="displayDateBody">05.12.2025г.</span> в период с <span id="displayStart">09:00</span> по <span id="displayEnd">09:20</span> поясняю:
+                </div>
+
+                <!-- Текст причины -->
+                <div id="reasonText" style="text-align: justify; text-indent: 1.25cm; margin-top: 0.5cm;">
+                    Отсутствие было вызвано причинами личного характера, исключающими возможность более раннего прибытия. В настоящее время препятствия к выполнению трудовой функции устранены.
+                </div>
+
+                <!-- Абзац про отсутствие ущерба -->
+                <div id="noDamageText" style="text-align: justify; text-indent: 1.25cm; margin-top: 0.5cm;">
+                    Дополнительно сообщаю, что данное обстоятельство не повлекло за собой срыва производственных процессов или нанесения материального ущерба организации.
+                </div>
+
+                <!-- Абзац про компенсацию -->
+                <div id="compensateText" style="text-align: justify; text-indent: 1.25cm; margin-top: 0.5cm;">
+                    Готов компенсировать пропущенное время путем переработки в конце рабочего дня для сохранения общего баланса рабочего времени согласно трудовому договору.
+                </div>
+
+                <!-- Подвал (ФИО в Именительном падеже) -->
+                <div style="margin-top: 3cm; display: flex; justify-content: space-between;">
+                    <div id="displayEmployeeSignature">Вася Пупкин</div>
+                    <div id="displayDateSign">05.12.2025г.</div>
+                </div>
+                
+                <!-- Место для подписи -->
+                <div style="margin-top: -0.8cm; margin-left: 50%; transform: translateX(-50%); text-align: center; font-size: 10pt; color: #ccc;">
+                    ___________________ (Подпись)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация даты
+        const today = new Date();
+        const dateInput = document.getElementById('dateInput');
+        
+        // Устанавливаем текущую дату в формате YYYY-MM-DD
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+
+
+        // Элементы
+        const inputs = [
+            'dateInput', 'startTimeInput', 'endTimeInput', 
+            'directorName', 'employeeNameHeader', 'employeeNameSignature', 'reasonType', 
+            'companyName', 'employeeTitle', 'compensateCheckbox', 'customTextInput'
+        ];
+
+        // Тексты причин (11 вариантов + custom)
+        const reasons = {
+            personal: "Отсутствие было вызвано причинами личного характера, исключающими возможность более раннего прибытия. В настоящее время препятствия к выполнению трудовой функции устранены.",
+            remote: "Фактически выполнение трудовых обязанностей было начато мной в 08:50 в удаленном режиме (мониторинг состояния серверов, проверка ночных бэкапов). Физическое отсутствие в офисе было связано с перемещением от места удаленной работы к офису, что не прерывало контроль за работоспособностью систем.",
+            logistics: "Задержка прибытия была вызвана независящими от меня обстоятельствами, возникшими в транспортной логистике (транспортный коллапс), которые носили внезапный и непредсказуемый характер.",
+            infrastructure: "Прибытие на рабочее место было затруднено в связи с техническим инцидентом на сторонней городской инфраструктуре, что потребовало незапланированной корректировки маршрута следования.",
+            preventive: "Отсутствие было связано с проведением неотложных превентивных мероприятий, исключающих потенциальные риски для моей работоспособности и, как следствие, для бесперебойности производственного процесса.",
+            observation: "Время с 09:00 до 09:20 было использовано для проведения внепланового наблюдения за критическими системами, требующими постоянного контроля в режиме реального времени. Это позволило избежать потенциального инцидента.",
+            integrity: "Прибытие было задержано ввиду необходимости срочного удаленного обеспечения целостности критически важных данных, что является приоритетной задачей для непрерывности бизнес-процессов.",
+            optimization: "Фактор времени прибытия на рабочее место был напрямую связан со сложностями маршрутной оптимизации в условиях нестабильной городской среды, что находится вне зоны моего прямого контроля.",
+            admin: "Задержка вызвана необходимостью выполнения срочного административного требования (например, получение или оформление документации), что имело приоритет над стандартным временем прибытия.",
+            planning: "Произошла корректировка оперативного планирования в связи с кратковременной, но высокой когнитивной нагрузкой, что потребовало смещения начала физического присутствия для сохранения эффективности.",
+            custom: "" // Placeholder for custom text
+        };
+
+        // ИСПРАВЛЕННАЯ ФУНКЦИЯ: Решена проблема часового пояса
+        function formatDate(dateStr) {
+            if (!dateStr) return "DD.MM.YYYY";
+            // dateStr имеет формат YYYY-MM-DD
+            return dateStr.split('-').reverse().join('.') + 'г.';
+        }
+
+        function updateDocument() {
+            // Получаем значения
+            const dateVal = document.getElementById('dateInput').value;
+            const startVal = document.getElementById('startTimeInput').value;
+            const endVal = document.getElementById('endTimeInput').value;
+            const dirName = document.getElementById('directorName').value;
+            const empNameHeader = document.getElementById('employeeNameHeader').value;
+            const empNameSignature = document.getElementById('employeeNameSignature').value;
+            const type = document.getElementById('reasonType').value;
+            const companyName = document.getElementById('companyName').value;
+            const employeeTitle = document.getElementById('employeeTitle').value;
+            const compensateChecked = document.getElementById('compensateCheckbox').checked;
+            const customTextVal = document.getElementById('customTextInput').value;
+
+            // Обновляем DOM
+            const formattedDate = formatDate(dateVal);
+            
+            document.getElementById('displayDateBody').innerText = formattedDate;
+            document.getElementById('displayDateSign').innerText = formattedDate;
+            document.getElementById('displayStart').innerText = startVal;
+            document.getElementById('displayEnd').innerText = endVal;
+            
+            // Шапка
+            document.getElementById('displayDirector').innerText = dirName;
+            document.getElementById('displayEmployeeHeader').innerText = empNameHeader; // Родительный падеж
+            document.getElementById('displayCompany').innerText = companyName;
+            document.getElementById('displayEmployeeTitle').innerText = employeeTitle;
+
+            // Подпись (Именительный падеж)
+            document.getElementById('displayEmployeeSignature').innerText = empNameSignature;
+
+            // Логика отображения пользовательского текста
+            const customContainer = document.getElementById('customTextInputContainer');
+            if (type === 'custom') {
+                customContainer.style.display = 'block';
+                document.getElementById('reasonText').innerText = customTextVal;
+            } else {
+                customContainer.style.display = 'none';
+                document.getElementById('reasonText').innerText = reasons[type];
+            }
+            
+            // Логика отображения компенсации
+            const compensateBlock = document.getElementById('compensateText');
+            compensateBlock.style.display = compensateChecked ? 'block' : 'none';
+        }
+
+        // Навешиваем слушатели событий
+        inputs.forEach(id => {
+            document.getElementById(id).addEventListener('input', updateDocument);
+        });
+
+        // Первый рендер
+        updateDocument();
+
+        // Функция копирования текста
+        function copyText() {
+            // Получаем все данные из документа для формирования чистого текста
+            const company = document.getElementById('displayCompany').innerText;
+            const director = document.getElementById('displayDirector').innerText;
+            const title = document.getElementById('displayEmployeeTitle').innerText;
+            const employeeHeader = document.getElementById('employeeNameHeader').value; // Родительный
+            const employeeSignature = document.getElementById('employeeNameSignature').value; // Именительный
+            
+            const dateBody = document.getElementById('displayDateBody').innerText;
+            const start = document.getElementById('displayStart').innerText;
+            const end = document.getElementById('displayEnd').innerText;
+            const reason = document.getElementById('reasonText').innerText;
+            const noDamage = document.getElementById('noDamageText').innerText;
+            const compensate = document.getElementById('compensateText').style.display === 'block' ? 
+                                document.getElementById('compensateText').innerText : '';
+            const dateSign = document.getElementById('displayDateSign').innerText;
+
+            // Формирование чистого текста
+            let cleanText = `Генеральному директору
+${company}
+${director}
+От ${title}
+${employeeHeader}
+
+
+Объяснительная
+
+По факту отсутствия на рабочем месте ${dateBody} в период с ${start} по ${end} поясняю:
+${reason}
+${noDamage}
+${compensate}
+
+${employeeSignature}
+${dateSign}`;
+
+            // Убираем лишние пустые строки
+            cleanText = cleanText.split('\n').filter(line => line.trim() !== '').join('\n');
+            
+            navigator.clipboard.writeText(cleanText)
+                .then(() => {
+                    // БЕЗОПАСНОЕ СОЗДАНИЕ МОДАЛЬНОГО ОКНА (без innerHTML)
+                    const modal = document.createElement('div');
+                    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
+
+                    const content = document.createElement('div');
+                    content.className = 'bg-white p-6 rounded-lg shadow-xl text-black';
+
+                    const title = document.createElement('p');
+                    title.className = 'font-bold';
+                    title.textContent = 'Успешно скопировано';
+
+                    const desc = document.createElement('p');
+                    desc.textContent = 'Текст объяснительной скопирован в буфер обмена!';
+
+                    const btn = document.createElement('button');
+                    btn.className = 'mt-4 bg-blue-600 text-white py-1 px-3 rounded';
+                    btn.textContent = 'ОК';
+                    btn.onclick = () => {
+                         modal.remove();
+                         // Удаляем слушатель после закрытия через кнопку, если он еще не сработал
+                         window.removeEventListener('keydown', handleEscape);
+                    };
+
+                    content.append(title, desc, btn);
+                    modal.appendChild(content);
+                    document.body.appendChild(modal);
+                    
+                    // Закрытие по Escape
+                    const handleEscape = function(e) {
+                        if (e.key === 'Escape') {
+                            modal.remove();
+                            window.removeEventListener('keydown', handleEscape); // Удаляем себя после срабатывания
+                        }
+                    };
+                    window.addEventListener('keydown', handleEscape);
+
+
+                })
+                .catch(err => {
+                     console.error('Не удалось скопировать текст:', err);
+                });
+        }
+    </script>
+</body>
+</html>
